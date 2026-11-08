@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Day progress</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #EEF2F6; --ink: #14213D; --muted: #5B6B85; --track: #D3DBE7; --arc: #1F7A8C; --dot: #F2A93B;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0F1626; --ink: #E8EEF8; --muted: #93A3BF; --track: #223048; --arc: #4FB8CC; --dot: #F2A93B; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #0F1626; --ink: #E8EEF8; --muted: #93A3BF; --track: #223048; --arc: #4FB8CC; --dot: #F2A93B; color-scheme: dark; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
+body {
+  min-height: 100%; margin: 0; background: var(--bg); color: var(--ink);
+  font-family: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif;
+  display: flex; align-items: center; justify-content: center;
+}
+main { width: 100%; max-width: 560px; padding: 24px; text-align: center; }
+svg { width: 100%; height: auto; display: block; overflow: visible; }
+.track, .arc { fill: none; stroke-width: 22; stroke-linecap: round; }
+.track { stroke: var(--track); }
+.arc { stroke: var(--arc); }
+.tick { stroke: var(--muted); stroke-width: 2; }
+.lbl { fill: var(--muted); font-size: 14px; font-family: inherit; }
+.pct { fill: var(--ink); font-size: 76px; font-weight: 700; font-variant-numeric: tabular-nums; font-family: inherit; }
+.day { font-size: 1.1rem; color: var(--muted); margin: 0; }
+.sub { color: var(--muted); font-size: 1.05rem; margin: 4px 0 0; font-variant-numeric: tabular-nums; }
+.now { font-size: 1.5rem; font-weight: 700; margin: 12px 0 0; font-variant-numeric: tabular-nums; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 28px; text-align: left; }
+.stat span { display: block; color: var(--muted); font-size: .9rem; }
+.stat b { display: block; font-size: 1.4rem; font-variant-numeric: tabular-nums; margin: 2px 0 6px; }
+.bar { display: block; height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; }
+.bar u { display: block; height: 100%; width: 0; background: var(--arc); text-decoration: none; }
+.dl { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--track); text-align: left; }
+.dl h2 { font-size: 1.1rem; margin: 0 0 12px; }
+.dl input { width: 100%; box-sizing: border-box; font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--track); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+#dl-add { font: inherit; font-weight: 700; color: var(--bg); background: var(--arc); border: 0; border-radius: 8px; padding: 10px 16px; cursor: pointer; width: 100%; }
+.dl input:focus-visible, button:focus-visible { outline: 2px solid var(--arc); outline-offset: 2px; }
+#dl-list { margin-top: 22px; }
+.item { margin-bottom: 20px; }
+.dlrow { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 6px 0; }
+.dlrow > span:first-child { font-weight: 700; overflow-wrap: anywhere; }
+.dlrow b { font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.meta .sub { margin: 0; font-size: .95rem; }
+.rm { font: inherit; font-size: .95rem; color: var(--muted); background: none; border: 0; padding: 6px 0; text-decoration: underline; cursor: pointer; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<main>
+  <svg viewBox="0 0 400 250" role="img" aria-label="Day progress gauge">
+    <path class="track" d="M 40 200 A 160 160 0 0 1 360 200"/>
+    <path id="arc" class="arc" pathLength="100" stroke-dasharray="0 100" d="M 40 200 A 160 160 0 0 1 360 200"/>
+    <line class="tick" x1="200" y1="14" x2="200" y2="26"/>
+    <circle id="dot" r="9" fill="var(--dot)" stroke="var(--bg)" stroke-width="3" cx="40" cy="200"/>
+    <text class="lbl" x="40" y="236" text-anchor="middle">12 AM</text>
+    <text class="lbl" x="200" y="8" text-anchor="middle">12 PM</text>
+    <text class="lbl" x="360" y="236" text-anchor="middle">12 AM</text>
+    <text id="pct" class="pct" x="200" y="190" text-anchor="middle">0%</text>
+  </svg>
+  <p class="day" id="day"></p>
+  <p class="now" id="now"></p>
+  <p class="sub" id="left"></p>
+  <section class="stats">
+    <div class="stat"><span>Week</span><b id="wk-p">0%</b><i class="bar"><u id="wk-b"></u></i></div>
+    <div class="stat"><span>Month</span><b id="mo-p">0%</b><i class="bar"><u id="mo-b"></u></i></div>
+    <div class="stat"><span>Year</span><b id="yr-p">0%</b><i class="bar"><u id="yr-b"></u></i></div>
+  </section>
+  <section class="dl">
+    <h2>Deadlines</h2>
+    <input id="dl-name" type="text" placeholder="What is due?" maxlength="60" aria-label="Deadline name">
+    <input id="dl-due" type="datetime-local" aria-label="Due date and time">
+    <button id="dl-add" type="button">Add deadline</button>
+    <div id="dl-list"></div>
+  </section>
+</main>
+<script>
+(function () {
+  var arc = document.getElementById('arc'), dot = document.getElementById('dot'),
+      pct = document.getElementById('pct'), now = document.getElementById('now'),
+      left = document.getElementById('left'), day = document.getElementById('day');
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function $(id) { return document.getElementById(id); }
+  function setBar(id, p) { $(id + '-p').textContent = p.toFixed(1) + '%'; $(id + '-b').style.width = p + '%'; }
+
+  var dls = [], els = [];
+  try { dls = JSON.parse(localStorage.getItem('dayprogress-dls')) || []; } catch (e) { dls = []; }
+  if (!dls.length) {
+    try {
+      var o = JSON.parse(localStorage.getItem('dayprogress-dl'));
+      if (o && o.due) dls.push({ id: Date.now(), name: o.name || '', due: o.due, start: o.start });
+    } catch (e) {}
+  }
+  function save() { try { localStorage.setItem('dayprogress-dls', JSON.stringify(dls)); } catch (e) {} }
+
+  function startFor(t) {
+    var n = new Date();
+    var wk = new Date(n.getFullYear(), n.getMonth(), n.getDate() - (n.getDay() + 6) % 7);
+    var wkEnd = new Date(wk.getFullYear(), wk.getMonth(), wk.getDate() + 7).getTime();
+    var moEnd = new Date(n.getFullYear(), n.getMonth() + 1, 1).getTime();
+    if (t <= wkEnd) return wk.getTime();
+    if (t <= moEnd) return new Date(n.getFullYear(), n.getMonth(), 1).getTime();
+    return new Date(n.getFullYear(), 0, 1).getTime();
+  }
+
+  function render() {
+    var box = $('dl-list');
+    box.innerHTML = '';
+    els = [];
+    dls.sort(function (a, b) { return a.due - b.due; });
+    dls.forEach(function (x) {
+      var el = document.createElement('div');
+      el.className = 'item';
+      el.innerHTML = '<div class="dlrow"><span></span><b></b></div><i class="bar"><u></u></i>' +
+        '<div class="dlrow meta"><span class="sub"></span><button type="button" class="rm">Remove</button></div>';
+      el.querySelector('.dlrow span').textContent = x.name || 'Deadline';
+      el.querySelector('.rm').addEventListener('click', function () {
+        dls = dls.filter(function (y) { return y.id !== x.id; });
+        save(); render(); update(new Date());
+      });
+      els.push(el);
+      box.appendChild(el);
+    });
+  }
+
+  function update(d) {
+    dls.forEach(function (x, i) {
+      var el = els[i]; if (!el) return;
+      var total = x.due - x.start;
+      var p = total > 0 ? Math.min(100, Math.max(0, (d.getTime() - x.start) / total * 100)) : 100;
+      el.querySelector('b').textContent = p.toFixed(1) + '%';
+      el.querySelector('.bar u').style.width = p + '%';
+      var r = Math.max(0, (x.due - d.getTime()) / 1000);
+      var when = new Date(x.due).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      el.querySelector('.meta .sub').textContent = when + ' \u00B7 ' + (r <= 0 ? 'time has passed' :
+        Math.floor(r / 86400) + ' d ' + Math.floor(r % 86400 / 3600) + ' h ' + Math.floor(r % 3600 / 60) + ' min left');
+    });
+  }
+
+  $('dl-add').addEventListener('click', function () {
+    var v = $('dl-due').value;
+    if (!v) { $('dl-due').focus(); return; }
+    var t = new Date(v).getTime();
+    dls.push({ id: Date.now(), name: $('dl-name').value.trim(), due: t, start: startFor(t) });
+    $('dl-name').value = ''; $('dl-due').value = '';
+    save(); render(); update(new Date());
+  });
+
+  function tick() {
+    var d = new Date();
+    var secs = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+    var p = secs / 86400 * 100;
+    arc.setAttribute('stroke-dasharray', p + ' 100');
+    var a = Math.PI * (1 - p / 100);
+    dot.setAttribute('cx', 200 + 160 * Math.cos(a));
+    dot.setAttribute('cy', 200 - 160 * Math.sin(a));
+    pct.textContent = p.toFixed(1) + '%';
+    day.textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    var h12 = d.getHours() % 12 || 12;
+    now.textContent = h12 + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + ' ' + (d.getHours() < 12 ? 'AM' : 'PM');
+    var r = 86400 - secs, rh = Math.floor(r / 3600), rm = Math.floor((r % 3600) / 60);
+    left.textContent = rh + ' h ' + rm + ' min left today';
+    var dow = (d.getDay() + 6) % 7;
+    setBar('wk', (dow * 86400 + secs) / (7 * 86400) * 100);
+    var dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    setBar('mo', ((d.getDate() - 1) * 86400 + secs) / (dim * 86400) * 100);
+    var y0 = new Date(d.getFullYear(), 0, 1), y1 = new Date(d.getFullYear() + 1, 0, 1);
+    setBar('yr', (d - y0) / (y1 - y0) * 100);
+    update(d);
+  }
+  render();
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>
